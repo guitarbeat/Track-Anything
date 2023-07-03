@@ -9,25 +9,17 @@ def compute_tensor_iu(seg, gt):
 
 def compute_tensor_iou(seg, gt):
     intersection, union = compute_tensor_iu(seg, gt)
-    iou = (intersection + 1e-6) / (union + 1e-6)
-    
-    return iou 
+    return (intersection + 1e-6) / (union + 1e-6) 
 
 # STM
 def pad_divide_by(in_img, d):
     h, w = in_img.shape[-2:]
 
-    if h % d > 0:
-        new_h = h + d - h % d
-    else:
-        new_h = h
-    if w % d > 0:
-        new_w = w + d - w % d
-    else:
-        new_w = w
+    new_h = h + d - h % d if h % d > 0 else h
+    new_w = w + d - w % d if w % d > 0 else w
     lh, uh = int((new_h-h) / 2), int(new_h-h) - int((new_h-h) / 2)
     lw, uw = int((new_w-w) / 2), int(new_w-w) - int((new_w-w) / 2)
-    pad_array = (int(lw), int(uw), int(lh), int(uh))
+    pad_array = lw, int(uw), lh, int(uh)
     out = F.pad(in_img, pad_array)
     return out, pad_array
 

@@ -11,7 +11,4 @@ def aggregate(prob, dim, return_logits=False):
     logits = torch.log((new_prob /(1-new_prob)))
     prob = F.softmax(logits, dim=dim)
 
-    if return_logits:
-        return logits, prob
-    else:
-        return prob
+    return (logits, prob) if return_logits else prob

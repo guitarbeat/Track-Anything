@@ -165,7 +165,7 @@ class MemoryManager:
         # key:   1*C*N
         # value: num_objects*C*N
         key = key.flatten(start_dim=2)
-        shrinkage = shrinkage.flatten(start_dim=2) 
+        shrinkage = shrinkage.flatten(start_dim=2)
         value = value[0].flatten(start_dim=2)
 
         self.CK = key.shape[1]
@@ -178,15 +178,14 @@ class MemoryManager:
 
         self.work_mem.add(key, value, shrinkage, selection, objects)
 
-        # long-term memory cleanup
-        if self.enable_long_term:
             # Do memory compressed if needed
-            if self.work_mem.size >= self.max_work_elements:
+        if self.work_mem.size >= self.max_work_elements:
+            if self.enable_long_term:
                 # print('remove memory')
                 # Remove obsolete features if needed
                 if self.long_mem.size >= (self.max_long_elements-self.num_prototypes):
                     self.long_mem.remove_obsolete_features(self.max_long_elements-self.num_prototypes)
-                    
+
                 self.compress_features()
 
     def create_hidden_state(self, n, sample_key):

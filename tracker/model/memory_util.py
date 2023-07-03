@@ -59,16 +59,12 @@ def do_softmax(similarity, top_k: Optional[int]=None, inplace=False, return_usag
         affinity = x_exp / x_exp_sum 
         indices = None
 
-    if return_usage:
-        return affinity, affinity.sum(dim=2)
-
-    return affinity
+    return (affinity, affinity.sum(dim=2)) if return_usage else affinity
 
 def get_affinity(mk, ms, qk, qe):
     # shorthand used in training with no top-k
     similarity = get_similarity(mk, ms, qk, qe)
-    affinity = do_softmax(similarity)
-    return affinity
+    return do_softmax(similarity)
 
 def readout(affinity, mv):
     B, CV, T, H, W = mv.shape

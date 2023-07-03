@@ -202,10 +202,10 @@ def mask_painter(input_image, input_mask, background_alpha=0.5, background_blur_
 	# downsample input image and mask
 	width, height = input_image.shape[0], input_image.shape[1]
 	res = 1024
-	ratio = min(1.0 * res / max(width, height), 1.0)  
+	ratio = min(1.0 * res / max(width, height), 1.0)
 	input_image = cv2.resize(input_image, (int(height*ratio), int(width*ratio)))
 	input_mask = cv2.resize(input_mask, (int(height*ratio), int(width*ratio)))
-	
+
 	# 0: background, 1: foreground
 	msk = np.clip(input_mask, 0, 1)
 
@@ -215,11 +215,15 @@ def mask_painter(input_image, input_mask, background_alpha=0.5, background_blur_
 	generator_dict = {'00':mask_generator_00, '01':mask_generator_01, '10':mask_generator_10, '11':mask_generator_11}
 	background_mask, contour_mask = generator_dict[mode](msk, background_radius, contour_radius)
 
-	# paint
-	painted_image = vis_add_mask\
-		(input_image, background_mask, contour_mask, color_list[0], color_list[contour_color], background_alpha, contour_alpha)	# black for background
-
-	return painted_image
+	return vis_add_mask(
+		input_image,
+		background_mask,
+		contour_mask,
+		color_list[0],
+		color_list[contour_color],
+		background_alpha,
+		contour_alpha,
+	)
 
 
 if __name__ == '__main__':
@@ -233,15 +237,15 @@ if __name__ == '__main__':
 	# load input image and mask
 	input_image = np.array(Image.open('./test_img/painter_input_image.jpg').convert('RGB'))
 	input_mask = np.array(Image.open('./test_img/painter_input_mask.jpg').convert('P'))
-	
+
 	# paint
 	overall_time_1 = 0
 	overall_time_2 = 0
 	overall_time_3 = 0
 	overall_time_4 = 0
 	overall_time_5 = 0
-	
-	for i in range(50):
+
+	for _ in range(50):
 		t2 = time.time()
 		painted_image_00 = mask_painter(input_image, input_mask, background_alpha, background_blur_radius, contour_width, contour_color, contour_alpha, mode='00')
 		e2 = time.time()

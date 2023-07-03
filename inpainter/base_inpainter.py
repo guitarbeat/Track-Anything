@@ -36,9 +36,9 @@ class BaseInpainter:
 	def get_ref_index(self, f, neighbor_ids, length):
 		ref_index = []
 		if self.num_ref == -1:
-			for i in range(0, length, self.step):
-				if i not in neighbor_ids:
-					ref_index.append(i)
+			ref_index.extend(
+				i for i in range(0, length, self.step) if i not in neighbor_ids
+			)
 		else:
 			start_idx = max(0, f - self.step * (self.num_ref // 2))
 			end_idx = min(length, f + self.step * (self.num_ref // 2))
@@ -64,7 +64,7 @@ class BaseInpainter:
 		"""
 		assert frames.shape[:3] == masks.shape, 'different size between frames and masks'
 		assert ratio > 0 and ratio <= 1, 'ratio must in (0, 1]'
-		
+
 		# --------------------
 		# pre-processing
 		# --------------------
@@ -120,15 +120,17 @@ class BaseInpainter:
 		frames = frames[num_tcb:end_idx]				# only neighbor area are involved
 
 		for f in tqdm(range(0, video_length, self.neighbor_stride), desc='Inpainting image'):
-			neighbor_ids = [
-				i for i in range(max(0, f - self.neighbor_stride),
-								min(video_length, f + self.neighbor_stride + 1))
-			]
+			neighbor_ids = list(
+				range(
+					max(0, f - self.neighbor_stride),
+					min(video_length, f + self.neighbor_stride + 1),
+				)
+			)
 			ref_ids = self.get_ref_index(f, neighbor_ids, video_length)
 
 			# selected_imgs = imgs[:1, neighbor_ids + ref_ids, :, :, :]
 			# selected_masks = masks[:1, neighbor_ids + ref_ids, :, :, :]
-			
+
 			selected_imgs = imgs[:, neighbor_ids]
 			selected_masks = masks[:, neighbor_ids]
 			# pad before
@@ -291,10 +293,12 @@ class BaseInpainter:
 		comp_frames = [None] * video_length
 
 		for f in tqdm(range(0, video_length, self.neighbor_stride), desc='Inpainting image'):
-			neighbor_ids = [
-				i for i in range(max(0, f - self.neighbor_stride),
-								min(video_length, f + self.neighbor_stride + 1))
-			]
+			neighbor_ids = list(
+				range(
+					max(0, f - self.neighbor_stride),
+					min(video_length, f + self.neighbor_stride + 1),
+				)
+			)
 			ref_ids = self.get_ref_index(f, neighbor_ids, video_length)
 			selected_imgs = imgs[:1, neighbor_ids + ref_ids, :, :, :]
 			selected_masks = masks[:1, neighbor_ids + ref_ids, :, :, :]

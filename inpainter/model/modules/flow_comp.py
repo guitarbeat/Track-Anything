@@ -41,9 +41,7 @@ class FlowCompletionLoss(nn.Module):
             pred_flows[0].view(-1, 2, h // 4, w // 4), gt_flows_forward)
         backward_flow_loss = self.l1_criterion(
             pred_flows[1].view(-1, 2, h // 4, w // 4), gt_flows_backward)
-        flow_loss = forward_flow_loss + backward_flow_loss
-
-        return flow_loss
+        return forward_flow_loss + backward_flow_loss
 
 
 class SPyNet(nn.Module):
@@ -98,7 +96,7 @@ class SPyNet(nn.Module):
         supp = [(supp - self.mean) / self.std]
 
         # generate downsampled frames
-        for level in range(5):
+        for _ in range(5):
             ref.append(
                 F.avg_pool2d(input=ref[-1],
                              kernel_size=2,
@@ -249,28 +247,26 @@ def make_colorwheel():
 
     ncols = RY + YG + GC + CB + BM + MR
     colorwheel = np.zeros((ncols, 3))
-    col = 0
-
     # RY
     colorwheel[0:RY, 0] = 255
     colorwheel[0:RY, 1] = np.floor(255 * np.arange(0, RY) / RY)
-    col = col + RY
+    col = 0 + RY
     # YG
     colorwheel[col:col + YG, 0] = 255 - np.floor(255 * np.arange(0, YG) / YG)
     colorwheel[col:col + YG, 1] = 255
-    col = col + YG
+    col += YG
     # GC
     colorwheel[col:col + GC, 1] = 255
     colorwheel[col:col + GC, 2] = np.floor(255 * np.arange(0, GC) / GC)
-    col = col + GC
+    col += GC
     # CB
     colorwheel[col:col + CB, 1] = 255 - np.floor(255 * np.arange(CB) / CB)
     colorwheel[col:col + CB, 2] = 255
-    col = col + CB
+    col += CB
     # BM
     colorwheel[col:col + BM, 2] = 255
     colorwheel[col:col + BM, 0] = np.floor(255 * np.arange(0, BM) / BM)
-    col = col + BM
+    col += BM
     # MR
     colorwheel[col:col + MR, 2] = 255 - np.floor(255 * np.arange(MR) / MR)
     colorwheel[col:col + MR, 0] = 255
@@ -375,12 +371,13 @@ def flow_warp(x,
     grid_flow_x = 2.0 * grid_flow[:, :, :, 0] / max(w - 1, 1) - 1.0
     grid_flow_y = 2.0 * grid_flow[:, :, :, 1] / max(h - 1, 1) - 1.0
     grid_flow = torch.stack((grid_flow_x, grid_flow_y), dim=3)
-    output = F.grid_sample(x,
-                           grid_flow,
-                           mode=interpolation,
-                           padding_mode=padding_mode,
-                           align_corners=align_corners)
-    return output
+    return F.grid_sample(
+        x,
+        grid_flow,
+        mode=interpolation,
+        padding_mode=padding_mode,
+        align_corners=align_corners,
+    )
 
 
 def initial_mask_flow(mask):
@@ -440,11 +437,16 @@ def initial_mask_flow(mask):
     final_offset_left = (initial_offset_left > 0) * initial_offset_right + (
         initial_offset_left < 0) * initial_offset_left
     zero_offset = torch.zeros_like(final_offset_down)
-    # out = torch.cat([final_offset_left, zero_offset, final_offset_right, zero_offset, zero_offset, final_offset_up, zero_offset, final_offset_down], dim=2)
-    out = torch.cat([
-        zero_offset, final_offset_left, zero_offset, final_offset_right,
-        final_offset_up, zero_offset, final_offset_down, zero_offset
-    ],
-                    dim=2)
-
-    return out
+    return torch.cat(
+        [
+            zero_offset,
+            final_offset_left,
+            zero_offset,
+            final_offset_right,
+            final_offset_up,
+            zero_offset,
+            final_offset_down,
+            zero_offset,
+        ],
+        dim=2,
+    )
