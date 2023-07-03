@@ -18,9 +18,7 @@ class BaseNetwork(nn.Module):
     def print_network(self):
         if isinstance(self, list):
             self = self[0]
-        num_params = 0
-        for param in self.parameters():
-            num_params += param.numel()
+        num_params = sum(param.numel() for param in self.parameters())
         print(
             'Network [%s] was created. Total number of parameters: %.1f million. '
             'To see the architecture, do print(network).' %
@@ -55,8 +53,8 @@ class BaseNetwork(nn.Module):
                     m.reset_parameters()
                 else:
                     raise NotImplementedError(
-                        'initialization method [%s] is not implemented' %
-                        init_type)
+                        f'initialization method [{init_type}] is not implemented'
+                    )
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias.data, 0.0)
 
@@ -177,7 +175,6 @@ class InpaintGenerator(BaseNetwork):
             n_vecs *= int((output_size[i] + 2 * padding[i] -
                            (d - 1) - 1) / stride[i] + 1)
 
-        blocks = []
         depths = 8
         num_heads = [4] * depths
         window_size = [(5, 9)] * depths
@@ -185,16 +182,19 @@ class InpaintGenerator(BaseNetwork):
         focal_levels = [2] * depths
         pool_method = "fc"
 
-        for i in range(depths):
-            blocks.append(
-                TemporalFocalTransformerBlock(dim=hidden,
-                                              num_heads=num_heads[i],
-                                              window_size=window_size[i],
-                                              focal_level=focal_levels[i],
-                                              focal_window=focal_windows[i],
-                                              n_vecs=n_vecs,
-                                              t2t_params=t2t_params,
-                                              pool_method=pool_method))
+        blocks = [
+            TemporalFocalTransformerBlock(
+                dim=hidden,
+                num_heads=num_heads[i],
+                window_size=window_size[i],
+                focal_level=focal_levels[i],
+                focal_window=focal_windows[i],
+                n_vecs=n_vecs,
+                t2t_params=t2t_params,
+                pool_method=pool_method,
+            )
+            for i in range(depths)
+        ]
         self.transformer = nn.Sequential(*blocks)
 
         if init_weights:
@@ -340,11 +340,8 @@ class Discriminator(BaseNetwork):
         feat = self.conv(xs_t)
         if self.use_sigmoid:
             feat = torch.sigmoid(feat)
-        out = torch.transpose(feat, 1, 2)  # B, T, C, H, W
-        return out
+        return torch.transpose(feat, 1, 2)
 
 
 def spectral_norm(module, mode=True):
-    if mode:
-        return _spectral_norm(module)
-    return module
+    return _spectral_norm(module) if mode else module

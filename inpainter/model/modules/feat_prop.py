@@ -84,9 +84,7 @@ class BidirectionalPropagation(nn.Module):
         return [b, t, c, h, w]
         """
         b, t, c, h, w = x.shape
-        feats = {}
-        feats['spatial'] = [x[:, i, :, :, :] for i in range(0, t)]
-
+        feats = {'spatial': [x[:, i, :, :, :] for i in range(0, t)]}
         for module_name in ['backward_', 'forward_']:
 
             feats[module_name] = []
@@ -141,7 +139,7 @@ class BidirectionalPropagation(nn.Module):
                 feats[module_name] = feats[module_name][::-1]
 
         outputs = []
-        for i in range(0, t):
+        for _ in range(0, t):
             align_feats = [feats[k].pop(0) for k in feats if k != 'spatial']
             align_feats = torch.cat(align_feats, dim=1)
             outputs.append(self.fusion(align_feats))

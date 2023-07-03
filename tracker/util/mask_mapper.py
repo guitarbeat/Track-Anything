@@ -54,11 +54,10 @@ class MaskMapper:
 
         if exhaustive:
             new_mapped_labels = range(1, len(self.labels)+len(new_labels)+1)
+        elif self.coherent:
+            new_mapped_labels = new_labels
         else:
-            if self.coherent:
-                new_mapped_labels = new_labels
-            else:
-                new_mapped_labels = range(len(self.labels)+1, len(self.labels)+len(new_labels)+1)
+            new_mapped_labels = range(len(self.labels)+1, len(self.labels)+len(new_labels)+1)
 
         self.labels.extend(new_labels)
         mask = torch.from_numpy(all_to_onehot(mask, self.labels)).float()

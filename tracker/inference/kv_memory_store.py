@@ -70,12 +70,12 @@ class KeyValueMemoryStore:
                 self.v[gi] = torch.cat([self.v[gi], value[group]], -1)
 
             # If there are remaining objects, add them as a new group
-            if len(remaining_objects) > 0:
+            if remaining_objects:
                 new_group = list(remaining_objects)
                 self.v.append(value[new_group])
                 self.obj_groups.append(new_group)
                 self.all_objects.extend(new_group)
-                
+
                 assert sorted(self.all_objects) == self.all_objects, 'Objects MUST be inserted in sorted order '
         else:
             # When objects is not given, v is a list that already has the object groups sorted
@@ -160,8 +160,7 @@ class KeyValueMemoryStore:
         if not self.count_usage:
             raise RuntimeError('I did not count usage!')
         else:
-            usage = self.use_count / self.life_count
-            return usage
+            return self.use_count / self.life_count
 
     def get_all_sliced(self, start: int, end: int):
         # return k, sk, ek, usage in order, sliced by start and end
@@ -188,10 +187,7 @@ class KeyValueMemoryStore:
 
     @property
     def size(self):
-        if self.k is None:
-            return 0
-        else:
-            return self.k.shape[-1]
+        return 0 if self.k is None else self.k.shape[-1]
 
     @property
     def num_groups(self):

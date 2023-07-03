@@ -57,7 +57,7 @@ class HiddenUpdater(nn.Module):
 
     def forward(self, g, h):
         g = self.g16_conv(g[0]) + self.g8_conv(downsample_groups(g[1], ratio=1/2)) + \
-            self.g4_conv(downsample_groups(g[2], ratio=1/4))
+                self.g4_conv(downsample_groups(g[2], ratio=1/4))
 
         g = torch.cat([g, h], 2)
 
@@ -69,9 +69,7 @@ class HiddenUpdater(nn.Module):
         forget_gate = torch.sigmoid(values[:,:,:self.hidden_dim])
         update_gate = torch.sigmoid(values[:,:,self.hidden_dim:self.hidden_dim*2])
         new_value = torch.tanh(values[:,:,self.hidden_dim*2:])
-        new_h = forget_gate*h*(1-update_gate) + update_gate*new_value
-
-        return new_h
+        return forget_gate*h*(1-update_gate) + update_gate*new_value
 
 
 class HiddenReinforcer(nn.Module):
@@ -94,9 +92,7 @@ class HiddenReinforcer(nn.Module):
         forget_gate = torch.sigmoid(values[:,:,:self.hidden_dim])
         update_gate = torch.sigmoid(values[:,:,self.hidden_dim:self.hidden_dim*2])
         new_value = torch.tanh(values[:,:,self.hidden_dim*2:])
-        new_h = forget_gate*h*(1-update_gate) + update_gate*new_value
-
-        return new_h
+        return forget_gate*h*(1-update_gate) + update_gate*new_value
 
 
 class ValueEncoder(nn.Module):

@@ -13,8 +13,8 @@ import torchvision
 import torch
 
 from demo import automask_image_app, automask_video_app, sahi_autoseg_app
-sys.path.append(sys.path[0] + "/tracker")
-sys.path.append(sys.path[0] + "/tracker/model")
+sys.path.append(f"{sys.path[0]}/tracker")
+sys.path.append(f"{sys.path[0]}/tracker/model")
 from track_anything import TrackingAnything
 from track_anything import parse_augment
 

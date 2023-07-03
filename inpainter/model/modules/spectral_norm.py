@@ -22,8 +22,8 @@ class SpectralNorm(object):
         self.dim = dim
         if n_power_iterations <= 0:
             raise ValueError(
-                'Expected n_power_iterations to be positive, but '
-                'got n_power_iterations={}'.format(n_power_iterations))
+                f'Expected n_power_iterations to be positive, but got n_power_iterations={n_power_iterations}'
+            )
         self.n_power_iterations = n_power_iterations
         self.eps = eps
 
@@ -67,9 +67,9 @@ class SpectralNorm(object):
         #    GAN training: loss = D(real) - D(fake). Otherwise, engine will
         #    complain that variables needed to do backward for the first forward
         #    (i.e., the `u` and `v` vectors) are changed in the second forward.
-        weight = getattr(module, self.name + '_orig')
-        u = getattr(module, self.name + '_u')
-        v = getattr(module, self.name + '_v')
+        weight = getattr(module, f'{self.name}_orig')
+        u = getattr(module, f'{self.name}_u')
+        v = getattr(module, f'{self.name}_v')
         weight_mat = self.reshape_weight_to_matrix(weight)
 
         if do_power_iteration:
@@ -99,9 +99,9 @@ class SpectralNorm(object):
         with torch.no_grad():
             weight = self.compute_weight(module, do_power_iteration=False)
         delattr(module, self.name)
-        delattr(module, self.name + '_u')
-        delattr(module, self.name + '_v')
-        delattr(module, self.name + '_orig')
+        delattr(module, f'{self.name}_u')
+        delattr(module, f'{self.name}_v')
+        delattr(module, f'{self.name}_orig')
         module.register_parameter(self.name,
                                   torch.nn.Parameter(weight.detach()))
 
@@ -123,8 +123,8 @@ class SpectralNorm(object):
         for k, hook in module._forward_pre_hooks.items():
             if isinstance(hook, SpectralNorm) and hook.name == name:
                 raise RuntimeError(
-                    "Cannot register two spectral_norm hooks on "
-                    "the same parameter {}".format(name))
+                    f"Cannot register two spectral_norm hooks on the same parameter {name}"
+                )
 
         fn = SpectralNorm(name, n_power_iterations, dim, eps)
         weight = module._parameters[name]
@@ -138,15 +138,15 @@ class SpectralNorm(object):
             v = normalize(weight.new_empty(w).normal_(0, 1), dim=0, eps=fn.eps)
 
         delattr(module, fn.name)
-        module.register_parameter(fn.name + "_orig", weight)
+        module.register_parameter(f"{fn.name}_orig", weight)
         # We still need to assign weight back as fn.name because all sorts of
         # things may assume that it exists, e.g., when initializing weights.
         # However, we can't directly assign as it could be an nn.Parameter and
         # gets added as a parameter. Instead, we register weight.data as a plain
         # attribute.
         setattr(module, fn.name, weight.data)
-        module.register_buffer(fn.name + "_u", u)
-        module.register_buffer(fn.name + "_v", v)
+        module.register_buffer(f"{fn.name}_u", u)
+        module.register_buffer(f"{fn.name}_v", v)
 
         module.register_forward_pre_hook(fn)
 
@@ -174,8 +174,9 @@ class SpectralNormLoadStateDictPreHook(object):
     def __call__(self, state_dict, prefix, local_metadata, strict,
                  missing_keys, unexpected_keys, error_msgs):
         fn = self.fn
-        version = local_metadata.get('spectral_norm',
-                                     {}).get(fn.name + '.version', None)
+        version = local_metadata.get('spectral_norm', {}).get(
+            f'{fn.name}.version', None
+        )
         if version is None or version < 1:
             with torch.no_grad():
                 weight_orig = state_dict[prefix + fn.name + '_orig']
@@ -197,10 +198,9 @@ class SpectralNormStateDictHook(object):
     def __call__(self, module, state_dict, prefix, local_metadata):
         if 'spectral_norm' not in local_metadata:
             local_metadata['spectral_norm'] = {}
-        key = self.fn.name + '.version'
+        key = f'{self.fn.name}.version'
         if key in local_metadata['spectral_norm']:
-            raise RuntimeError(
-                "Unexpected key in metadata['spectral_norm']: {}".format(key))
+            raise RuntimeError(f"Unexpected key in metadata['spectral_norm']: {key}")
         local_metadata['spectral_norm'][key] = self.fn._version
 
 
@@ -278,11 +278,8 @@ def remove_spectral_norm(module, name='weight'):
             del module._forward_pre_hooks[k]
             return module
 
-    raise ValueError("spectral_norm of '{}' not found in {}".format(
-        name, module))
+    raise ValueError(f"spectral_norm of '{name}' not found in {module}")
 
 
 def use_spectral_norm(module, use_sn=False):
-    if use_sn:
-        return spectral_norm(module)
-    return module
+    return spectral_norm(module) if use_sn else module

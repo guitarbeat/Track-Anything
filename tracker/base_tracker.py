@@ -142,10 +142,10 @@ if __name__ == '__main__':
     # video frames (take videos from DAVIS-2017 as examples)
     video_path_list = glob.glob(os.path.join('/ssd1/gaomingqi/datasets/davis/JPEGImages/480p/horsejump-high', '*.jpg'))
     video_path_list.sort()
-    # load frames
-    frames = []
-    for video_path in video_path_list:
-        frames.append(np.array(Image.open(video_path).convert('RGB')))
+    frames = [
+        np.array(Image.open(video_path).convert('RGB'))
+        for video_path in video_path_list
+    ]
     frames = np.stack(frames, 0)    # T, H, W, C
     # load first frame annotation
     first_frame_path = '/ssd1/gaomingqi/datasets/davis/Annotations/480p/horsejump-high/00000.png'

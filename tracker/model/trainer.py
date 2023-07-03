@@ -33,7 +33,10 @@ class XMemTrainer:
         self.save_path = save_path
         if logger is not None:
             self.last_time = time.time()
-            self.logger.log_string('model_size', str(sum([param.nelement() for param in self.XMem.parameters()])))
+            self.logger.log_string(
+                'model_size',
+                str(sum(param.nelement() for param in self.XMem.parameters())),
+            )
         self.train_integrator = Integrator(self.logger, distributed=True, local_rank=local_rank, world_size=world_size)
         self.loss_computer = LossComputer(config)
 
@@ -57,7 +60,7 @@ class XMemTrainer:
         torch.set_grad_enabled(self._is_train)
 
         for k, v in data.items():
-            if type(v) != list and type(v) != dict and type(v) != int:
+            if type(v) not in [list, dict, int]:
                 data[k] = v.cuda(non_blocking=True)
 
         out = {}
@@ -120,14 +123,14 @@ class XMemTrainer:
                 losses = self.loss_computer.compute({**data, **out}, num_filled_objects, it)
 
                 # Logging
-                if self._do_log:
-                    self.integrator.add_dict(losses)
+            if self._do_log:
+                self.integrator.add_dict(losses)
+                if it % self.log_image_interval == 0 and it != 0:
                     if self._is_train:
-                        if it % self.log_image_interval == 0 and it != 0:
-                            if self.logger is not None:
-                                images = {**data, **out}
-                                size = (384, 384)
-                                self.logger.log_cv2('train/pairs', pool_pairs(images, size, num_filled_objects), it)
+                        if self.logger is not None:
+                            images = {**data, **out}
+                            size = (384, 384)
+                            self.logger.log_cv2('train/pairs', pool_pairs(images, size, num_filled_objects), it)
 
             if self._is_train:
 
@@ -137,12 +140,12 @@ class XMemTrainer:
                     if self.logger is not None:
                         self.logger.log_scalar('train/lr', self.scheduler.get_last_lr()[0], it)
                         self.logger.log_metrics('train', 'time', (time_spent)/self.log_text_interval, it)
-                    
+
                     global_avg = 0.5*(global_avg) + 0.5*(time_spent)
                     eta_seconds = global_avg * (max_it - it) / 100
                     eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                     print(f'ETA: {eta_string}')
-                    
+
                     self.last_time = time.time()
                     self.train_integrator.finalize('train', it)
                     self.train_integrator.reset_except_hooks()

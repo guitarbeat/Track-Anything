@@ -45,17 +45,14 @@ class TrackingAnything():
         logits = []
         painted_images = []
         for i in tqdm(range(len(images)), desc="Tracking image"):
-            if i ==0:           
+            if i ==0:   
                 mask, logit, painted_image = self.xmem.track(images[i], template_mask)
-                masks.append(mask)
-                logits.append(logit)
-                painted_images.append(painted_image)
-                
             else:
                 mask, logit, painted_image = self.xmem.track(images[i])
-                masks.append(mask)
-                logits.append(logit)
-                painted_images.append(painted_image)
+            painted_images.append(painted_image)
+
+            logits.append(logit)
+            masks.append(mask)
         return masks, logits, painted_images
     
         
@@ -77,14 +74,9 @@ if __name__ == "__main__":
     masks = None
     logits = None
     painted_images = None
-    images = []
     image  = np.array(PIL.Image.open('/hhd3/gaoshang/truck.jpg'))
     args = parse_augment()
-    # images.append(np.ones((20,20,3)).astype('uint8'))
-    # images.append(np.ones((20,20,3)).astype('uint8'))
-    images.append(image)
-    images.append(image)
-
+    images = [image, image]
     mask = np.zeros_like(image)[:,:,0]
     mask[0,0]= 1
     trackany = TrackingAnything('/ssd1/gaomingqi/checkpoints/sam_vit_h_4b8939.pth','/ssd1/gaomingqi/checkpoints/XMem-s012.pth', args)

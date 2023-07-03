@@ -109,9 +109,11 @@ def window_partition(x, window_size):
     B, T, H, W, C = x.shape
     x = x.view(B, T, H // window_size[0], window_size[0], W // window_size[1],
                window_size[1], C)
-    windows = x.permute(0, 2, 4, 1, 3, 5, 6).contiguous().view(
-        -1, T * window_size[0] * window_size[1], C)
-    return windows
+    return (
+        x.permute(0, 2, 4, 1, 3, 5, 6)
+        .contiguous()
+        .view(-1, T * window_size[0] * window_size[1], C)
+    )
 
 
 def window_partition_noreshape(x, window_size):
@@ -125,8 +127,7 @@ def window_partition_noreshape(x, window_size):
     B, T, H, W, C = x.shape
     x = x.view(B, T, H // window_size[0], window_size[0], W // window_size[1],
                window_size[1], C)
-    windows = x.permute(0, 2, 4, 1, 3, 5, 6).contiguous()
-    return windows
+    return x.permute(0, 2, 4, 1, 3, 5, 6).contiguous()
 
 
 def window_reverse(windows, window_size, T, H, W):
@@ -199,8 +200,9 @@ class WindowAttention(nn.Module):
                     mask = torch.zeros(kernel_size)
                     mask[(2**k) - 1:, (2**k) - 1:] = 1
                     self.register_buffer(
-                        "valid_ind_unfold_{}".format(k),
-                        mask.flatten(0).nonzero(as_tuple=False).view(-1))
+                        f"valid_ind_unfold_{k}",
+                        mask.flatten(0).nonzero(as_tuple=False).view(-1),
+                    )
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.proj = nn.Linear(dim, dim)
@@ -302,17 +304,16 @@ class WindowAttention(nn.Module):
                 # unfold mask: [nWh*nWw//s//s, k*k, 1]
                 unfolded_mask = self.unfolds[k](mask.unsqueeze(1)).view(
                     1, T, self.unfolds[k].kernel_size[0], self.unfolds[k].kernel_size[1], -1).permute(4, 1, 2, 3, 0).contiguous().\
-                    view(nWh*nWw // stride // stride, -1, 1)
+                        view(nWh*nWw // stride // stride, -1, 1)
 
                 if k > 0:
-                    valid_ind_unfold_k = getattr(
-                        self, "valid_ind_unfold_{}".format(k))
+                    valid_ind_unfold_k = getattr(self, f"valid_ind_unfold_{k}")
                     unfolded_mask = unfolded_mask[:, valid_ind_unfold_k]
 
                 x_window_masks = unfolded_mask.flatten(1).unsqueeze(0)
                 x_window_masks = x_window_masks.masked_fill(
-                    x_window_masks == 0,
-                    float(-100.0)).masked_fill(x_window_masks > 0, float(0.0))
+                    x_window_masks == 0, -100.0
+                ).masked_fill(x_window_masks > 0, 0.0)
                 mask_all[k + 1] = x_window_masks
 
                 # generate k and v for pooled windows
@@ -328,7 +329,7 @@ class WindowAttention(nn.Module):
                 (k_pooled_k, v_pooled_k) = map(
                     lambda t: self.unfolds[k](t).view(
                     B, T, C, self.unfolds[k].kernel_size[0], self.unfolds[k].kernel_size[1], -1).permute(0, 5, 1, 3, 4, 2).contiguous().\
-                    view(-1, T, self.unfolds[k].kernel_size[0]*self.unfolds[k].kernel_size[1], self.num_heads, C // self.num_heads).permute(0, 3, 1, 2, 4).contiguous(),
+                        view(-1, T, self.unfolds[k].kernel_size[0]*self.unfolds[k].kernel_size[1], self.num_heads, C // self.num_heads).permute(0, 3, 1, 2, 4).contiguous(),
                     (k_pooled_k, v_pooled_k)  # (B x (nH*nW)) x nHeads x T x (unfold_wsize x unfold_wsize) x head_dim
                 )
                 # k_pooled_k shape : [16, 4, 5, 45, 128]
@@ -376,8 +377,8 @@ class WindowAttention(nn.Module):
 
                 if mask_all[k + 1] is not None:
                     attn[:, :, :window_area, offset:(offset + (T*bias[0]*bias[1]))] = \
-                        attn[:, :, :window_area, offset:(offset + (T*bias[0]*bias[1]))] + \
-                            mask_all[k+1][:, :, None, None, :].repeat(attn.shape[0] // mask_all[k+1].shape[1], 1, 1, 1, 1).view(-1, 1, 1, mask_all[k+1].shape[-1])
+                            attn[:, :, :window_area, offset:(offset + (T*bias[0]*bias[1]))] + \
+                                mask_all[k+1][:, :, None, None, :].repeat(attn.shape[0] // mask_all[k+1].shape[1], 1, 1, 1, 1).view(-1, 1, 1, mask_all[k+1].shape[-1])
 
                 offset += T * bias[0] * bias[1]
 
@@ -389,10 +390,7 @@ class WindowAttention(nn.Module):
                  window_area] = attn[:, :, :, :, :window_area] + mask_all[0][
                      None, :, None, :, :]
             attn = attn.view(-1, self.num_heads, window_area, N)
-            attn = self.softmax(attn)
-        else:
-            attn = self.softmax(attn)
-
+        attn = self.softmax(attn)
         x = (attn @ v_all).transpose(1, 2).reshape(attn.shape[0], window_area,
                                                    C)
         x = self.proj(x)
